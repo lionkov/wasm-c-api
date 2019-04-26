@@ -8,9 +8,9 @@ V8_ARCH = x64
 V8_MODE = release
 
 WASM_FLAGS = -DDEBUG  # -DDEBUG_LOG
-C_FLAGS = ${WASM_FLAGS} -Wall -Werror -ggdb -O -fsanitize=address
+C_FLAGS = ${WASM_FLAGS} -Wall -Werror -ggdb -O -fPIC #-fsanitize=address
 CC_FLAGS = ${C_FLAGS}
-LD_FLAGS = -fsanitize-memory-track-origins -fsanitize-memory-use-after-dtor
+#LD_FLAGS = -fsanitize-memory-track-origins -fsanitize-memory-use-after-dtor
 
 C_COMP = clang
 
@@ -95,7 +95,7 @@ endif
 #   make clean all
 
 .PHONY: all c cc
-all: c cc
+all: c cc libwasm
 c: ${EXAMPLES:%=run-%-c}
 cc: ${EXAMPLES:%=run-%-cc}
 
@@ -161,10 +161,10 @@ ${EXAMPLE_OUT}/%.wasm: ${EXAMPLE_DIR}/%.wasm
 #   make wasm
 
 .PHONY: wasm wasm-c wasm-cc
-wasm: wasm-c wasm-cc
+wasm: wasm-c wasm-cc libwasm
 wasm-c: ${WASM_C_LIBS:%=${WASM_OUT}/%.o}
 wasm-cc: ${WASM_CC_LIBS:%=${WASM_OUT}/%.o}
-
+libwasm: ${WASM_OUT}/libwasm.a
 
 # Compiling
 ${WASM_OUT}/%.o: ${WASM_SRC}/%.cc ${WASM_INCLUDE}/wasm.h ${WASM_INCLUDE}/wasm.hh
@@ -174,6 +174,10 @@ ${WASM_OUT}/%.o: ${WASM_SRC}/%.cc ${WASM_INCLUDE}/wasm.h ${WASM_INCLUDE}/wasm.hh
 # wasm-c.cc includes wasm-v8.cc, so set up a side dependency
 ${WASM_OUT}/wasm-c.o: ${WASM_SRC}/wasm-v8.cc
 
+${WASM_OUT}/libwasm.a: ${WASM_OUT}/wasm-c.o ${WASM_OUT}/wasm-v8.o ${WASM_OUT}/wasm-bin.o ${V8_OUT}/obj/libv8_monolith.a
+	cp ${V8_OUT}/obj/libv8_monolith.a ${WASM_OUT}/libwasm.a
+	ar r ${WASM_OUT}/libwasm.a ${WASM_OUT}/wasm-c.o ${WASM_OUT}/wasm-v8.o ${WASM_OUT}/wasm-bin.o
+	ranlib ${WASM_OUT}/libwasm.a
 
 ###############################################################################
 # Clean-up
